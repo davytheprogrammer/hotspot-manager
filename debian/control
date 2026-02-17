@@ -1,0 +1,38 @@
+Source: hotspot-manager
+Section: net
+Priority: optional
+Maintainer: Davis Ogega <davisogega8@gmail.com>
+Build-Depends: debhelper (>= 12), python3-all, python3-setuptools
+Standards-Version: 4.5.1
+Homepage: https://github.com/davytheprogrammer/hotspot-manager
+Vcs-Browser: https://github.com/davytheprogrammer/hotspot-manager
+Vcs-Git: https://github.com/davytheprogrammer/hotspot-manager.git
+
+Package: hotspot-manager
+Architecture: all
+Depends: ${python3:Depends}, ${misc:Depends},
+    python3 (>= 3.8),
+    python3-gi,
+    gir1.2-gtk-3.0,
+    gir1.2-appindicator3-0.1,
+    network-manager,
+    wireless-tools,
+    iw,
+    hostapd,
+    dnsmasq,
+    libnotify4,
+    arp-scan
+Recommends: notify-osd | notification-daemon
+Suggests: wpasupplicant
+Description: Concurrent WiFi and Hotspot Manager for Linux
+ A GTK3 application that enables concurrent WiFi and hotspot mode.
+ Allows users to stay connected to WiFi while broadcasting a hotspot
+ to share their internet connection with other devices.
+ .
+ Features:
+  - Concurrent Mode: WiFi connection stays active while hotspot runs
+  - GTK3 GUI with system tray indicator
+  - Hardware detection for concurrent mode support
+  - Connected devices monitoring
+  - CLI interface for scripting
+  - Auto-recovery when WiFi reconnects

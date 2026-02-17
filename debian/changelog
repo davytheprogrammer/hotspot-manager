@@ -1,0 +1,9 @@
+hotspot-manager (1.0.0-1) stable; urgency=medium
+
+  * Initial release
+  - Concurrent WiFi and Hotspot support
+  - GTK3 GUI with system tray
+  - Hardware detection for concurrent mode
+  - CLI interface for scripting
+
+ -- Davis Ogega <davisogega8@gmail.com>  Sat, 17 Feb 2026 00:00:00 +0000

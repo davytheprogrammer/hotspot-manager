@@ -1,0 +1,20 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=Hotspot Manager
+Comment=Concurrent WiFi and Hotspot Manager for Linux
+Exec=hotspot-manager
+Icon=network-wireless-hotspot
+Terminal=false
+Categories=Network;Settings;GTK;
+Keywords=hotspot;wifi;network;concurrent;
+StartupNotify=true
+Actions=Toggle;Status;
+
+[Desktop Action Toggle]
+Name=Toggle Hotspot
+Exec=hotspot-manager --toggle
+
+[Desktop Action Status]
+Name=Show Status
+Exec=hotspot-manager --status

@@ -1,0 +1,70 @@
+name: Build and Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+jobs:
+  build-deb:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y debhelper python3-all python3-setuptools devscripts
+      
+      - name: Build Debian package
+        run: |
+          dpkg-buildpackage -us -uc -b
+          mv ../*.deb ./hotspot-manager.deb
+      
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: hotspot-manager-deb
+          path: hotspot-manager.deb
+
+  release:
+    needs: build-deb
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Download artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: hotspot-manager-deb
+      
+      - name: Get version
+        id: get_version
+        run: echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+      
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: hotspot-manager.deb
+          body: |
+            ## Hotspot Manager ${{ steps.get_version.outputs.VERSION }}
+            
+            ### Installation
+            
+            Download the `.deb` file and install:
+            ```bash
+            sudo dpkg -i hotspot-manager.deb
+            sudo apt-get install -f  # Install dependencies
+            ```
+            
+            ### Features
+            - Concurrent WiFi + Hotspot mode
+            - GTK3 GUI with system tray
+            - Hardware detection
+            - CLI interface
+            
+            ### Changes
+            See commit history for details.
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

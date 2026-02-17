@@ -1,0 +1,60 @@
+name: Publish to PPA
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+jobs:
+  build-and-publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y debhelper python3-all python3-setuptools devscripts \
+            gpg gnupg-agent dput
+      
+      - name: Import GPG key
+        env:
+          GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
+          GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
+        run: |
+          echo "$GPG_PRIVATE_KEY" | gpg --import --batch
+          echo "allow-loopback-pinentry" >> ~/.gnupg/gpg-agent.conf
+          gpg-connect-agent reloadagent /bye
+      
+      - name: Build source package
+        run: |
+          debuild -S -sa
+          ls -la ../
+      
+      - name: Upload to PPA
+        env:
+          PPA_NAME: ${{ secrets.PPA_NAME }}
+        run: |
+          dput ppa:$PPA_NAME ../hotspot-manager_*.changes
+
+  build-deb-artifact:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y debhelper python3-all python3-setuptools
+      
+      - name: Build Debian package
+        run: |
+          dpkg-buildpackage -us -uc -b
+          mv ../*.deb ./hotspot-manager_amd64.deb
+      
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: hotspot-manager-deb
+          path: hotspot-manager_amd64.deb
