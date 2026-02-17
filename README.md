@@ -73,16 +73,7 @@ Normally, when you create a hotspot on Linux, your WiFi disconnects. This app en
 
 ## 📦 Installation
 
-### Option 1: APT (Ubuntu/Debian) - Recommended
-
-```bash
-# Add the PPA (coming soon)
-sudo add-apt-repository ppa:davytheprogrammer/hotspot-manager
-sudo apt update
-sudo apt install hotspot-manager
-```
-
-### Option 2: Download DEB
+### Option 1: Download DEB (Recommended)
 
 Download the latest `.deb` from [Releases](https://github.com/davytheprogrammer/hotspot-manager/releases):
 
@@ -92,7 +83,7 @@ sudo dpkg -i hotspot-manager.deb
 sudo apt install -f
 ```
 
-### Option 3: From Source
+### Option 2: From Source
 
 ```bash
 git clone https://github.com/davytheprogrammer/hotspot-manager.git
