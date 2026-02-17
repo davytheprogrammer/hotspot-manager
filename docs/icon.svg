@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
+  <defs>
+    <linearGradient id="grad1" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#FF6B35;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#F7931E;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="grad2" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#4CAF50;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#2196F3;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  
+  <!-- Background circle -->
+  <circle cx="64" cy="64" r="60" fill="url(#grad1)" opacity="0.1"/>
+  
+  <!-- WiFi symbol -->
+  <g transform="translate(24, 28)">
+    <!-- WiFi arcs -->
+    <path d="M40 56 Q40 40, 28 28" stroke="url(#grad2)" stroke-width="8" fill="none" stroke-linecap="round"/>
+    <path d="M40 56 Q40 30, 20 18" stroke="url(#grad2)" stroke-width="8" fill="none" stroke-linecap="round" opacity="0.7"/>
+    <path d="M40 56 Q40 20, 12 8" stroke="url(#grad2)" stroke-width="8" fill="none" stroke-linecap="round" opacity="0.5"/>
+    <!-- WiFi dot -->
+    <circle cx="40" cy="56" r="8" fill="url(#grad2)"/>
+  </g>
+  
+  <!-- Hotspot symbol (flame-like) -->
+  <g transform="translate(60, 50)">
+    <path d="M20 60 Q10 45, 15 30 Q20 40, 25 30 Q35 45, 20 60" fill="url(#grad1)"/>
+    <path d="M20 55 Q15 45, 18 35 Q22 42, 25 35 Q30 45, 20 55" fill="#FFD700"/>
+  </g>
+  
+  <!-- Connection lines -->
+  <line x1="64" y1="84" x2="88" y2="84" stroke="#333" stroke-width="2" stroke-dasharray="4,4"/>
+  <line x1="64" y1="84" x2="64" y2="100" stroke="#333" stroke-width="2" stroke-dasharray="4,4"/>
+  
+  <!-- Device icons -->
+  <rect x="80" y="78" width="20" height="14" rx="2" fill="#555"/>
+  <rect x="58" y="100" width="12" height="20" rx="2" fill="#555"/>
+</svg>
