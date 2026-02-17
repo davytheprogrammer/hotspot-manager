@@ -95,13 +95,18 @@ class HardwareDetector:
             )
 
             output = result.stdout
-            iface.supports_ap = "AP" in output
+            iface.supports_ap = "* AP" in output
 
-            supports_ap_vlan = "AP/VLAN" in output
-            iface.supports_concurrent = iface.supports_ap and supports_ap_vlan
+            has_ap_vlan = "* AP/VLAN" in output
+            has_managed = "* managed" in output
+            iface.supports_concurrent = (
+                iface.supports_ap and has_ap_vlan and has_managed
+            )
 
             if iface.supports_concurrent:
                 logger.info(f"{iface.name} supports concurrent mode (AP + managed)")
+            elif iface.supports_ap:
+                logger.info(f"{iface.name} supports AP mode (can create hotspot)")
 
         except subprocess.CalledProcessError:
             iface.supports_ap = False

@@ -102,8 +102,12 @@ class HotspotManagerApp:
                 ).start()
 
     def _start_hotspot_async(self, config: HotspotConfig):
-        success, message = self.manager.start_concurrent_hotspot_nmcli(config)
+        success, message = self.manager.start_hotspot(config)
         GLib.idle_add(self._update_status_display)
+        if success:
+            GLib.idle_add(lambda: self._show_info(message))
+        else:
+            GLib.idle_add(lambda: self._show_error(message))
 
     def _stop_hotspot_async(self):
         self.manager.stop_hotspot()
@@ -205,6 +209,15 @@ class HotspotManagerApp:
         self.wifi_status_label = Gtk.Label(label="WiFi: Checking...")
         wifi_row.pack_start(self.wifi_status_label, False, False, 0)
         status_box.pack_start(wifi_row, False, False, 0)
+
+        ethernet_row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
+        self.ethernet_icon = Gtk.Image.new_from_icon_name(
+            "network-wired", Gtk.IconSize.MENU
+        )
+        ethernet_row.pack_start(self.ethernet_icon, False, False, 0)
+        self.ethernet_status_label = Gtk.Label(label="Ethernet: Checking...")
+        ethernet_row.pack_start(self.ethernet_status_label, False, False, 0)
+        status_box.pack_start(ethernet_row, False, False, 0)
 
         hotspot_row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
         self.hotspot_icon = Gtk.Image.new_from_icon_name(
@@ -409,16 +422,29 @@ class HotspotManagerApp:
 
         status = self.manager.get_status()
 
+        has_internet = status.get("wifi_connected") or status.get("ethernet_connected")
+
         if status["wifi_connected"]:
             self.wifi_icon.set_from_icon_name(
                 "network-wireless-connected", Gtk.IconSize.MENU
             )
-            self.wifi_status_label.set_text(f"WiFi: Connected to {status['wifi_ssid']}")
+            self.wifi_status_label.set_text(f"WiFi: {status['wifi_ssid']}")
         else:
             self.wifi_icon.set_from_icon_name(
                 "network-wireless-disconnected", Gtk.IconSize.MENU
             )
             self.wifi_status_label.set_text("WiFi: Not connected")
+
+        if status.get("ethernet_connected"):
+            self.ethernet_icon.set_from_icon_name("network-wired", Gtk.IconSize.MENU)
+            self.ethernet_status_label.set_text(
+                f"Ethernet: {status['ethernet_interface']}"
+            )
+        else:
+            self.ethernet_icon.set_from_icon_name(
+                "network-wired-disconnected", Gtk.IconSize.MENU
+            )
+            self.ethernet_status_label.set_text("Ethernet: Not connected")
 
         if status["hotspot_active"]:
             self.hotspot_icon.set_from_icon_name(
@@ -427,7 +453,8 @@ class HotspotManagerApp:
             self.hotspot_status_label.set_text(f"Hotspot: {status['hotspot_ssid']}")
 
             self.mode_icon.set_from_icon_name("emblem-ok", Gtk.IconSize.MENU)
-            self.mode_status_label.set_text("Concurrent Mode: Active (WiFi + Hotspot)")
+            source = status.get("internet_interface", "unknown")
+            self.mode_status_label.set_text(f"Sharing internet from: {source}")
 
             self.start_button.set_sensitive(False)
             self.stop_button.set_sensitive(True)
@@ -441,18 +468,24 @@ class HotspotManagerApp:
             )
             self.hotspot_status_label.set_text("Hotspot: Inactive")
 
-            if status["wifi_connected"]:
+            if has_internet:
                 self.mode_icon.set_from_icon_name(
                     "dialog-information", Gtk.IconSize.MENU
                 )
-                self.mode_status_label.set_text("Concurrent Mode: Ready")
+                source = status.get("internet_interface", "")
+                if status.get("wifi_connected"):
+                    self.mode_status_label.set_text(
+                        f"Ready to share WiFi: {status['wifi_ssid']}"
+                    )
+                else:
+                    self.mode_status_label.set_text(
+                        f"Ready to share Ethernet: {source}"
+                    )
             else:
                 self.mode_icon.set_from_icon_name("dialog-warning", Gtk.IconSize.MENU)
-                self.mode_status_label.set_text(
-                    "Concurrent Mode: Connect to WiFi first"
-                )
+                self.mode_status_label.set_text("Connect to WiFi or Ethernet first")
 
-            self.start_button.set_sensitive(status["wifi_connected"])
+            self.start_button.set_sensitive(has_internet)
             self.start_button.set_label("Start Hotspot")
             self.stop_button.set_sensitive(False)
 

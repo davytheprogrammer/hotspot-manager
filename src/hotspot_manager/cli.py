@@ -7,14 +7,27 @@ from hotspot_manager import ConcurrentHotspotManager, HotspotConfig, HardwareDet
 def cmd_status(manager, detector):
     status = manager.get_status()
     print("\n=== Hotspot Manager Status ===")
-    print(f"WiFi Connected: {'Yes' if status['wifi_connected'] else 'No'}")
+
     if status["wifi_connected"]:
-        print(f"WiFi SSID: {status['wifi_ssid']}")
-        print(f"WiFi Interface: {status['wifi_interface']}")
-    print(f"Hotspot Active: {'Yes' if status['hotspot_active'] else 'No'}")
+        print(f"WiFi: Connected to {status['wifi_ssid']} ({status['wifi_interface']})")
+    else:
+        print("WiFi: Not connected")
+
+    if status.get("ethernet_connected"):
+        print(f"Ethernet: Connected ({status['ethernet_interface']})")
+    else:
+        print("Ethernet: Not connected")
+
+    if status.get("internet_interface"):
+        print(f"Internet Source: {status['internet_interface']}")
+
+    print()
     if status["hotspot_active"]:
-        print(f"Hotspot SSID: {status['hotspot_ssid']}")
+        print(f"Hotspot: ACTIVE - {status['hotspot_ssid']}")
+        print(f"Method: {status.get('hotspot_method', 'unknown')}")
         print(f"Connected Clients: {status['connected_clients']}")
+    else:
+        print("Hotspot: Inactive")
     print()
 
 
@@ -47,10 +60,11 @@ def cmd_start(manager, args):
         interface=interface,
         channel=args.channel,
         band=args.band,
+        internet_interface=args.internet,
     )
 
     print(f"Starting hotspot '{config.ssid}' on {config.interface}...")
-    success, message = manager.start_concurrent_hotspot_nmcli(config)
+    success, message = manager.start_hotspot(config)
     print(message)
     return 0 if success else 1
 
@@ -65,15 +79,35 @@ def cmd_interfaces(detector):
     print("\n=== WiFi Interfaces ===")
     interfaces = detector.get_wifi_interfaces()
 
+    if not interfaces:
+        print("No WiFi interfaces found")
+        return
+
     for iface in interfaces:
         concurrent = "✓" if iface.supports_concurrent else "✗"
         ap = "✓" if iface.supports_ap else "✗"
         print(f"\n{iface.name}:")
         print(f"  Driver: {iface.driver}")
-        print(f"  Concurrent Mode: {concurrent}")
-        print(f"  AP Mode: {ap}")
+        print(f"  AP Mode Support: {ap}")
+        print(f"  Concurrent Support: {concurrent}")
         print(f"  Current Mode: {iface.current_mode}")
         print(f"  Connected: {'Yes' if iface.connected else 'No'}")
+
+    print("\n=== Ethernet Interfaces ===")
+    import subprocess
+
+    try:
+        result = subprocess.run(
+            ["nmcli", "-t", "-f", "DEVICE,TYPE,STATE", "device", "status"],
+            capture_output=True,
+            text=True,
+        )
+        for line in result.stdout.splitlines():
+            parts = line.split(":")
+            if len(parts) >= 3 and parts[1] == "ethernet":
+                print(f"\n{parts[0]}: {parts[2]}")
+    except Exception:
+        pass
     print()
 
 
@@ -86,6 +120,11 @@ def main():
     parser.add_argument("--ssid", "-s", help="Hotspot SSID")
     parser.add_argument("--password", "-p", help="Hotspot password (min 8 chars)")
     parser.add_argument("--interface", "-i", help="WiFi interface to use")
+    parser.add_argument(
+        "--internet",
+        "-I",
+        help="Internet source interface (auto-detected if not specified)",
+    )
     parser.add_argument(
         "--channel", "-c", type=int, default=6, help="WiFi channel (default: 6)"
     )

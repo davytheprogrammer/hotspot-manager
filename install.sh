@@ -16,7 +16,7 @@ apt-get update
 apt-get install -y python3 python3-pip python3-gi \
     network-manager wireless-tools iw hostapd dnsmasq \
     gir1.2-gtk-3.0 gir1.2-appindicator3-0.1 \
-    libgtk-3-0 libnotify4 arp-scan
+    libgtk-3-0 libnotify4 arp-scan iptables iproute2
 
 echo ""
 echo "[2/5] Installing Python packages..."

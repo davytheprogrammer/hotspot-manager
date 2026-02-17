@@ -21,7 +21,9 @@ Depends: ${python3:Depends}, ${misc:Depends},
     hostapd,
     dnsmasq,
     libnotify4,
-    arp-scan
+    arp-scan,
+    iptables,
+    iproute2
 Recommends: notify-osd | notification-daemon
 Suggests: wpasupplicant
 Description: Concurrent WiFi and Hotspot Manager for Linux
