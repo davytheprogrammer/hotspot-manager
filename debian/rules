@@ -1,27 +1,25 @@
 #!/usr/bin/make -f
 export PYBUILD_NAME = hotspot-manager
-export PYBUILD_SYSTEM = custom
-export PYBUILD_BUILD_ARGS = python3 setup.py build
-export PYBUILD_INSTALL_ARGS = python3 setup.py install --root=$(DEB_DESTDIR) --install-layout=deb
 
 %:
 	dh $@ --with python3 --buildsystem=pybuild
 
-override_dh_auto_install:
-	dh_auto_install
-	mkdir -p $(DEB_DESTDIR)/usr/share/applications
-	cp data/hotspot-manager.desktop $(DEB_DESTDIR)/usr/share/applications/
-	
-	mkdir -p $(DEB_DESTDIR)/usr/bin
-	echo '#!/usr/bin/env python3' > $(DEB_DESTDIR)/usr/bin/hotspot-manager
-	echo 'import sys; from hotspot_manager.main import main; sys.exit(main())' >> $(DEB_DESTDIR)/usr/bin/hotspot-manager
-	chmod +x $(DEB_DESTDIR)/usr/bin/hotspot-manager
-	
-	echo '#!/usr/bin/env python3' > $(DEB_DESTDIR)/usr/bin/hotspot-cli
-	echo 'import sys; from hotspot_manager.cli import main; sys.exit(main())' >> $(DEB_DESTDIR)/usr/bin/hotspot-cli
-	chmod +x $(DEB_DESTDIR)/usr/bin/hotspot-cli
+override_dh_auto_build:
+	python3 setup.py build
 
-override_dh_fixperms:
-	dh_fixperms
-	chmod +x $(DEB_DESTDIR)/usr/bin/hotspot-manager
-	chmod +x $(DEB_DESTDIR)/usr/bin/hotspot-cli
+override_dh_auto_install:
+	python3 setup.py install --root=$(CURDIR)/debian/hotspot-manager --install-layout=deb
+	mkdir -p $(CURDIR)/debian/hotspot-manager/usr/share/applications
+	cp data/hotspot-manager.desktop $(CURDIR)/debian/hotspot-manager/usr/share/applications/
+	mkdir -p $(CURDIR)/debian/hotspot-manager/usr/bin
+	echo '#!/usr/bin/env python3' > $(CURDIR)/debian/hotspot-manager/usr/bin/hotspot-manager
+	echo 'import sys; from hotspot_manager.main import main; sys.exit(main())' >> $(CURDIR)/debian/hotspot-manager/usr/bin/hotspot-manager
+	chmod +x $(CURDIR)/debian/hotspot-manager/usr/bin/hotspot-manager
+	echo '#!/usr/bin/env python3' > $(CURDIR)/debian/hotspot-manager/usr/bin/hotspot-cli
+	echo 'import sys; from hotspot_manager.cli import main; sys.exit(main())' >> $(CURDIR)/debian/hotspot-manager/usr/bin/hotspot-cli
+	chmod +x $(CURDIR)/debian/hotspot-manager/usr/bin/hotspot-cli
+
+override_dh_clean:
+	dh_clean
+	rm -rf build
+	rm -rf hotspot_manager.egg-info

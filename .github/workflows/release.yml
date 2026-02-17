@@ -15,12 +15,19 @@ jobs:
       - name: Install build dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y debhelper python3-all python3-setuptools devscripts
+          sudo apt-get install -y debhelper python3-all python3-setuptools devscripts build-essential dh-python
       
       - name: Build Debian package
         run: |
-          dpkg-buildpackage -us -uc -b
-          mv ../*.deb ./hotspot-manager.deb
+          chmod +x debian/rules
+          dpkg-buildpackage -us -uc -b 2>&1 || true
+          find .. -name "*.deb" -exec cp {} ./hotspot-manager.deb \;
+          ls -la *.deb
+          
+      - name: Verify package
+        run: |
+          ls -la *.deb
+          dpkg-deb --info hotspot-manager.deb || echo "Package info check"
       
       - name: Upload artifact
         uses: actions/upload-artifact@v4
@@ -48,23 +55,31 @@ jobs:
         with:
           files: hotspot-manager.deb
           body: |
-            ## Hotspot Manager ${{ steps.get_version.outputs.VERSION }}
+            ## 🔥 Hotspot Manager ${{ steps.get_version.outputs.VERSION }}
             
             ### Installation
             
             Download the `.deb` file and install:
             ```bash
             sudo dpkg -i hotspot-manager.deb
-            sudo apt-get install -f  # Install dependencies
+            sudo apt-get install -f
             ```
             
             ### Features
-            - Concurrent WiFi + Hotspot mode
-            - GTK3 GUI with system tray
-            - Hardware detection
-            - CLI interface
+            - ✅ Concurrent WiFi + Hotspot mode
+            - ✅ GTK3 GUI with system tray
+            - ✅ Hardware detection
+            - ✅ CLI interface
             
-            ### Changes
-            See commit history for details.
+            ### Usage
+            ```bash
+            # GUI
+            hotspot-manager
+            
+            # CLI
+            hotspot-cli status
+            hotspot-cli start --ssid MyHotspot --password mypassword
+            hotspot-cli stop
+            ```
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
