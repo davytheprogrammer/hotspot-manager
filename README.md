@@ -52,6 +52,7 @@ Normally, when you create a hotspot on Linux, your WiFi disconnects. This app en
 | Feature | Description |
 |---------|-------------|
 | 🔀 **Concurrent Mode** | WiFi + Hotspot at the same time |
+| 🔌 **Ethernet Sharing** | Share wired connection via WiFi hotspot |
 | 🖥️ **GTK3 GUI** | Clean, native Linux interface |
 | 📍 **System Tray** | Quick toggle from notification area |
 | 🔍 **Hardware Detection** | Auto-detects concurrent mode support |
@@ -59,6 +60,7 @@ Normally, when you create a hotspot on Linux, your WiFi disconnects. This app en
 | ⌨️ **CLI Interface** | Script and automate hotspot management |
 | 🔄 **Auto-Recovery** | Restarts hotspot when WiFi reconnects |
 | 💾 **Config Save** | Remember your hotspot settings |
+| ⚡ **Forced Mode** | Virtual interfaces for incompatible hardware |
 
 ---
 
