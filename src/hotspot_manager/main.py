@@ -21,15 +21,6 @@ logger = logging.getLogger(__name__)
 
 class HotspotManagerApp:
     def __init__(self):
-        self.app = (
-            Gtk.Application(
-                application_id="com.hotspot.manager",
-                flags=Gio.ApplicationFlags.FLAGS_NONE,
-            )
-            if self._check_gio()
-            else None
-        )
-
         self.detector = HardwareDetector()
         self.manager = ConcurrentHotspotManager()
         self.manager.register_callback(self._on_hotspot_event)
@@ -41,14 +32,6 @@ class HotspotManagerApp:
         self.clients_timeout_id = None
 
         self._init_indicator()
-
-    def _check_gio(self):
-        try:
-            from gi.repository import Gio
-
-            return True
-        except ImportError:
-            return False
 
     def _init_indicator(self):
         try:

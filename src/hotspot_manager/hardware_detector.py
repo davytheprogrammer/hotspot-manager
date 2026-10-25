@@ -2,7 +2,7 @@
 import subprocess
 import re
 from dataclasses import dataclass
-from typing import Optional, List
+from typing import Optional, List, Tuple, Dict
 import logging
 
 logging.basicConfig(level=logging.INFO)
@@ -15,9 +15,26 @@ class WifiInterface:
     driver: str
     supports_ap: bool
     supports_concurrent: bool
+    max_concurrent_channels: int
     phy_number: int
     current_mode: str
     connected: bool
+
+
+def freq_to_channel(freq_mhz: int) -> Optional[int]:
+    if freq_mhz == 2484:
+        return 14
+    if 2412 <= freq_mhz <= 2472:
+        return (freq_mhz - 2407) // 5
+    if 5000 <= freq_mhz <= 5900:
+        return (freq_mhz - 5000) // 5
+    if 5955 <= freq_mhz <= 7115:
+        return (freq_mhz - 5950) // 5
+    return None
+
+
+def channel_to_band(channel: int) -> str:
+    return "bg" if channel <= 14 else "a"
 
 
 class HardwareDetector:
@@ -30,25 +47,29 @@ class HardwareDetector:
             iw_result = subprocess.run(
                 ["iw", "dev"], capture_output=True, text=True, check=True
             )
-            current_if = None
             current_phy = None
 
             for line in iw_result.stdout.splitlines():
-                if line.strip().startswith("Interface"):
-                    if current_if:
-                        self._finalize_interface(current_if)
-                    current_if = {
-                        "name": line.split()[-1],
-                        "phy": current_phy,
-                        "modes": [],
-                    }
-                elif line.strip().startswith("wiphy"):
-                    current_phy = int(line.split()[-1])
-                    if current_if:
-                        current_if["phy"] = current_phy
-
-            if current_if:
-                self._finalize_interface(current_if)
+                if line.strip().startswith("phy#"):
+                    match = re.search(r"phy#(\d+)", line)
+                    if match:
+                        current_phy = int(match.group(1))
+                elif line.strip().startswith("Interface"):
+                    iface_name = line.split()[-1]
+                    if current_phy is not None:
+                        driver = self._get_driver(iface_name)
+                        self.interfaces.append(
+                            WifiInterface(
+                                name=iface_name,
+                                driver=driver,
+                                supports_ap=False,
+                                supports_concurrent=False,
+                                max_concurrent_channels=1,
+                                phy_number=current_phy,
+                                current_mode="unknown",
+                                connected=False,
+                            )
+                        )
 
             for iface in self.interfaces:
                 self._check_ap_support(iface)
@@ -58,20 +79,6 @@ class HardwareDetector:
         except subprocess.CalledProcessError as e:
             logger.error(f"Failed to get wifi interfaces: {e}")
             return []
-
-    def _finalize_interface(self, iface_data: dict):
-        driver = self._get_driver(iface_data["name"])
-        self.interfaces.append(
-            WifiInterface(
-                name=iface_data["name"],
-                driver=driver,
-                supports_ap=False,
-                supports_concurrent=False,
-                phy_number=iface_data.get("phy", 0),
-                current_mode="unknown",
-                connected=False,
-            )
-        )
 
     def _get_driver(self, interface: str) -> str:
         try:
@@ -86,6 +93,58 @@ class HardwareDetector:
             pass
         return "unknown"
 
+    def get_phy_combinations(self, phy_number: int) -> List[Dict]:
+        """Parse `iw phy phyN info` 'valid interface combinations' into
+        structured data: each combo is a dict with 'groups' (list of
+        (role_names, max_count)), 'total' and 'channels' limits."""
+        combos = []
+        try:
+            result = subprocess.run(
+                ["iw", "phy", f"phy{phy_number}", "info"],
+                capture_output=True,
+                text=True,
+            )
+            output = result.stdout
+        except Exception:
+            return combos
+
+        match = re.search(
+            r"valid interface combinations:\s*\n(.*?)(?:\n\S|\Z)", output, re.DOTALL
+        )
+        if not match:
+            return combos
+
+        block = match.group(1)
+        # Each combo is a "*"-prefixed bullet, possibly wrapped over lines.
+        bullets = re.split(r"\n\s*\*\s*", "\n * " + block.strip())
+        for bullet in bullets:
+            bullet = bullet.strip()
+            if not bullet:
+                continue
+
+            groups = []
+            for group_match in re.finditer(
+                r"#\{\s*([^}]+?)\s*\}\s*<=\s*(\d+)", bullet
+            ):
+                roles = [r.strip() for r in group_match.group(1).split(",")]
+                groups.append((roles, int(group_match.group(2))))
+
+            total_match = re.search(r"total\s*<=\s*(\d+)", bullet)
+            channels_match = re.search(r"#channels\s*<=\s*(\d+)", bullet)
+
+            if groups:
+                combos.append(
+                    {
+                        "groups": groups,
+                        "total": int(total_match.group(1)) if total_match else None,
+                        "channels": int(channels_match.group(1))
+                        if channels_match
+                        else 1,
+                    }
+                )
+
+        return combos
+
     def _check_ap_support(self, iface: WifiInterface):
         try:
             result = subprocess.run(
@@ -93,20 +152,46 @@ class HardwareDetector:
                 capture_output=True,
                 text=True,
             )
-
             output = result.stdout
-            iface.supports_ap = "* AP" in output
+            iface.supports_ap = "\t\t * AP\n" in output or "* AP\n" in output
 
-            has_ap_vlan = "* AP/VLAN" in output
-            has_managed = "* managed" in output
-            iface.supports_concurrent = (
-                iface.supports_ap and has_ap_vlan and has_managed
-            )
+            combos = self.get_phy_combinations(iface.phy_number)
+            best_channels = 0
+            concurrent = False
+
+            for combo in combos:
+                managed_ok = any(
+                    "managed" in roles and count >= 1 for roles, count in combo["groups"]
+                )
+                ap_ok = any(
+                    "AP" in roles and count >= 1 for roles, count in combo["groups"]
+                )
+                total_ok = combo["total"] is None or combo["total"] >= 2
+
+                # A single group covering both roles with count>=2 also counts
+                # (e.g. "#{ managed, AP } <= 2").
+                combined_ok = any(
+                    "managed" in roles and "AP" in roles and count >= 2
+                    for roles, count in combo["groups"]
+                )
+
+                if total_ok and (combined_ok or (managed_ok and ap_ok)):
+                    concurrent = True
+                    best_channels = max(best_channels, combo["channels"] or 1)
+
+            iface.supports_concurrent = concurrent
+            iface.max_concurrent_channels = best_channels or 1
 
             if iface.supports_concurrent:
-                logger.info(f"{iface.name} supports concurrent mode (AP + managed)")
+                logger.info(
+                    f"{iface.name} supports concurrent AP+managed mode "
+                    f"(max {iface.max_concurrent_channels} channel(s) simultaneously)"
+                )
             elif iface.supports_ap:
-                logger.info(f"{iface.name} supports AP mode (can create hotspot)")
+                logger.info(
+                    f"{iface.name} supports AP mode but NOT concurrent with managed "
+                    f"mode on the same radio (hotspot will disconnect existing WiFi)"
+                )
 
         except subprocess.CalledProcessError:
             iface.supports_ap = False
@@ -143,6 +228,29 @@ class HardwareDetector:
 
         except Exception as e:
             logger.error(f"Error checking state for {iface.name}: {e}")
+
+    def get_current_channel(self, interface: str) -> Optional[Tuple[int, str]]:
+        """Return (channel, band) the interface is currently operating on,
+        or None if it can't be determined (e.g. not connected)."""
+        try:
+            result = subprocess.run(
+                ["iw", "dev", interface, "link"], capture_output=True, text=True
+            )
+            match = re.search(r"freq:\s*(\d+)", result.stdout)
+            if not match:
+                result = subprocess.run(
+                    ["iw", "dev", interface, "info"], capture_output=True, text=True
+                )
+                match = re.search(r"channel\s+\d+\s+\((\d+)\s*MHz\)", result.stdout)
+
+            if match:
+                freq = int(match.group(1))
+                channel = freq_to_channel(freq)
+                if channel is not None:
+                    return channel, channel_to_band(channel)
+        except Exception as e:
+            logger.error(f"Error reading current channel for {interface}: {e}")
+        return None
 
     def get_connected_wifi(self) -> Optional[str]:
         try:
